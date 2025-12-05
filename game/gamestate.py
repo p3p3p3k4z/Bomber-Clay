@@ -1,7 +1,8 @@
 import random
 import time
 from config import *
-from game.entities import Jugador, Enemigo, Bomba, Explosion
+# Importamos las nuevas clases
+from game.entities import Jugador, Bomba, Explosion, EnemigoErratico, EnemigoFantasma, EnemigoCazador
 
 class GameState:
     def __init__(self):
@@ -13,30 +14,38 @@ class GameState:
         self.generar_nivel()
 
     def generar_nivel(self):
-        # 1. Mapa Procedural (Algoritmo Bomberman clásico)
+        # 1. Mapa Procedural
         for y in range(FILAS):
             for x in range(COLS):
                 if x == 0 or x == COLS-1 or y == 0 or y == FILAS-1:
                     self.mapa[y][x] = R
                 elif x % 2 == 0 and y % 2 == 0:
                     self.mapa[y][x] = R
-                elif random.random() < 0.3:
-                    self.mapa[y][x] = B # Basura
+                elif random.random() < 0.35: # Un poco más de basura para cubrir al fantasma
+                    self.mapa[y][x] = B
 
-        # 2. Zonas seguras (Esquinas)
+        # 2. Zonas seguras
         safe_zones = [(1,1), (1,2), (2,1), (COLS-2, FILAS-2)]
         for (sx, sy) in safe_zones:
             self.mapa[sy][sx] = V
 
-        # 3. Spawning Enemigos
-        tipos = ["SMILE", "SMOKE", "SLIME"]
-        for _ in range(6):
+        # 3. Spawning Variado de Enemigos
+        # Generamos 2 de cada tipo
+        for _ in range(3): self.spawn_enemigo(EnemigoErratico) # Smiles
+        for _ in range(2): self.spawn_enemigo(EnemigoFantasma) # Ghosts
+        for _ in range(2): self.spawn_enemigo(EnemigoCazador)  # Slimes
+
+    def spawn_enemigo(self, ClaseEnemigo):
+        """Busca un lugar vacío aleatorio y pone un enemigo"""
+        intentos = 0
+        while intentos < 50:
             ex, ey = random.randint(3, COLS-3), random.randint(3, FILAS-3)
             if self.mapa[ey][ex] == V:
-                self.enemigos.append(Enemigo(ex, ey, random.choice(tipos)))
+                self.enemigos.append(ClaseEnemigo(ex, ey))
+                break
+            intentos += 1
 
     def update(self):
-        """Actualiza el mundo (Solo el HOST llama a esto)"""
         now = time.time()
 
         # A. Bombas
@@ -44,7 +53,6 @@ class GameState:
             if now >= b.tiempo_detonacion:
                 self.detonar(b)
                 self.bombas.remove(b)
-                # Devolver bomba al jugador
                 if b.owner_id in self.jugadores:
                     self.jugadores[b.owner_id].bombas_disponibles += 1
 
@@ -53,16 +61,16 @@ class GameState:
             if now >= e.tiempo_fin:
                 self.explosiones.remove(e)
 
-        # C. Enemigos (IA Errática)
+        # C. Enemigos (Polimorfismo: Cada uno se mueve a su manera)
         for e in self.enemigos:
-            if e.vivo and now > e.timer_mov:
-                dirs = [(0,1), (0,-1), (1,0), (-1,0)]
-                dx, dy = random.choice(dirs)
-                nx, ny = e.x + dx, e.y + dy
-                # Solo caminan en vacío
-                if self.mapa[ny][nx] == V:
-                    e.x, e.y = nx, ny
-                e.timer_mov = now + (0.5 if e.tipo == "SMOKE" else 0.8)
+            if e.vivo:
+                # Ahora pasamos 'jugadores' para que el Cazador pueda verlos
+                e.mover(self.mapa, self.jugadores)
+                
+                # Checar colisión con Jugadores
+                for p in self.jugadores.values():
+                    if p.vivo and p.x == e.x and p.y == e.y:
+                        p.vivo = False # Game Over para ese jugador
 
     def detonar(self, bomba):
         hit_cells = [(bomba.x, bomba.y)]
@@ -76,19 +84,16 @@ class GameState:
                 cell = self.mapa[ny][nx]
                 if cell == R: break
                 if cell == B:
-                    self.mapa[ny][nx] = V # Destruir basura
+                    self.mapa[ny][nx] = V
                     hit_cells.append((nx, ny))
-                    break # La explosión se detiene en la basura
+                    break 
                 hit_cells.append((nx, ny))
         
         self.explosiones.append(Explosion(hit_cells))
         
-        # Verificar Daño
         for (hx, hy) in hit_cells:
-            # Matar Enemigos
             for e in self.enemigos:
                 if e.x == hx and e.y == hy: e.vivo = False
-            # Matar Jugadores
             for pid, p in self.jugadores.items():
                 if p.x == hx and p.y == hy: p.vivo = False
 
@@ -99,7 +104,6 @@ class GameState:
 
         nx, ny = p.x + dx, p.y + dy
         if 0 <= nx < COLS and 0 <= ny < FILAS:
-            # Solo camina si está vacío y no hay bomba
             if self.mapa[ny][nx] == V:
                 if not any(b.x == nx and b.y == ny for b in self.bombas):
                     p.x, p.y = nx, ny
