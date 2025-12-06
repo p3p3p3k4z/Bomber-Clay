@@ -22,7 +22,7 @@ class Spawner:
                 # Seguridad
                 seguro = True
                 for p in gamestate.jugadores.values():
-                    if abs(p.x - ex) + abs(p.y - ey) < 10: seguro = False
+                    if abs(p.x - ex) + abs(p.y - ey) < 12: seguro = False
                 
                 if seguro:
                     gamestate.enemigos.append(ClaseEnemigo(ex, ey))
