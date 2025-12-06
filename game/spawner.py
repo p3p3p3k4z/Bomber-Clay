@@ -6,8 +6,8 @@ class Spawner:
     @staticmethod
     def spawn_enemigos_iniciales(gamestate, nivel, singleplayer):
         if nivel < 3:
-            # Más enemigos al inicio como pediste
-            base = 1 if singleplayer else 1
+            # Más enemigos al inicio 
+            base = 5 if singleplayer else 3
             total = base + ((nivel - 1) * 3)
             tipos = [EnemigoErratico, EnemigoFantasma, EnemigoCazador]
             
@@ -22,7 +22,7 @@ class Spawner:
                 # Seguridad
                 seguro = True
                 for p in gamestate.jugadores.values():
-                    if abs(p.x - ex) + abs(p.y - ey) < 5: seguro = False
+                    if abs(p.x - ex) + abs(p.y - ey) < 8: seguro = False
                 
                 if seguro:
                     gamestate.enemigos.append(ClaseEnemigo(ex, ey))

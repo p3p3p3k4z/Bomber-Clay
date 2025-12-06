@@ -12,7 +12,7 @@ def main():
     pygame.init()
     pygame.mixer.init()
     pantalla = pygame.display.set_mode((ANCHO, ALTO))
-    pygame.display.set_caption("ECO-BOMBER: FINAL EDITION")
+    pygame.display.set_caption("Bomber-Clay")
     clock = pygame.time.Clock()
     
     # 1. Carga de Assets una sola vez

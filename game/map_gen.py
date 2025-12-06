@@ -14,13 +14,13 @@ class MapGenerator:
 
         # Configuración de Densidad
         if nivel == 3: # Jefe (Arena más limpia)
-            prob_muro = 0.05
-            prob_arbusto = 0.15
+            prob_muro = 0.15
+            prob_arbusto = 0.20
         else:
             # Niveles normales
             # Aumentamos probabilidad de arbustos para el gameplay, pero pocos muros fijos
-            prob_muro = 0.10 + (nivel * 0.02)
-            prob_arbusto = 0.10 + (nivel * 0.05)
+            prob_muro = 0.20 + (nivel * 0.02)
+            prob_arbusto = 0.20 + (nivel * 0.05)
 
         # 2. Relleno Aleatorio (Sin patrón ajedrez)
         for y in range(1, FILAS - 1):
