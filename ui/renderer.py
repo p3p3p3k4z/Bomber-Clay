@@ -1,7 +1,6 @@
 import pygame
 import math
 import time
-import random
 import os
 from config import *
 
@@ -9,201 +8,159 @@ class Renderer:
     def __init__(self, pantalla):
         self.pantalla = pantalla
         self.font = pygame.font.SysFont("Consolas", 20, bold=True)
-        self.font_big = pygame.font.SysFont("Impact", 80)
-        
-        # --- CARGADOR INTELIGENTE DE ASSETS ---
+        self.font_big = pygame.font.SysFont("Impact", 60)
         self.assets = {}
         self.cargar_assets()
-        
+
     def cargar_assets(self):
-        """Carga imágenes específicas. Si falla alguna, usa None."""
         nombres = {
-            # Entorno
+            "player1": "assets/player1.png",
+            "player2": "assets/player2.png",
             "wall": "assets/wall.png",
             "bush": "assets/bush.png",
+            "enemy_smile": "assets/enemy_smile.png",
+            "enemy_ghost": "assets/enemy_ghost.png",
+            "enemy_hunter": "assets/enemy_hunter.png",
             "bomb": "assets/bomb.png",
-            "fondo": "assets/fondo.png",
-            
-            # Jugadores (Diferentes skins)
-            "player1": "assets/player1.png", # Azul/Host
-            "player2": "assets/player2.png", # Rojo/Cliente
-            
-            # Enemigos (Variedad)
-            "enemy_smile": "assets/enemy_smile.png",   # Errático
-            "enemy_ghost": "assets/enemy_ghost.png",   # Fantasma (Smoke)
-            "enemy_hunter": "assets/enemy_hunter.png", # Cazador (Slime)
-            
-            # Items (Power-ups)
+            "fire": "assets/fire.png", 
+            "boss": "assets/boss.png",
+            "intro_bg": "assets/intro_bg.png",
+            "bg_level1": "assets/bg_level1.png",
+            "bg_level2": "assets/bg_level2.png",
+            "bg_boss": "assets/bg_boss.png",
             "item_bomb": "assets/item_bomb.png",
             "item_speed": "assets/item_speed.png",
             "item_shield": "assets/item_shield.png"
         }
-        
-        for key, path in nombres.items():
-            if os.path.exists(path):
+        for k, p in nombres.items():
+            if os.path.exists(p):
                 try:
-                    img = pygame.image.load(path).convert_alpha()
-                    # Escalar todo a TAM_CELDA (32x32 o 50x50 según config)
-                    if key == "fondo":
-                        self.assets[key] = pygame.transform.scale(img, (ANCHO, ALTO))
-                    else:
-                        self.assets[key] = pygame.transform.scale(img, (TAM_CELDA, TAM_CELDA))
-                    print(f"[ASSET] Cargado: {path}")
-                except Exception as e:
-                    print(f"[ERROR] No se pudo cargar {path}: {e}")
-                    self.assets[key] = None
-            else:
-                self.assets[key] = None
+                    img = pygame.image.load(p).convert_alpha()
+                    if "bg_" in k or "intro" in k: self.assets[k] = pygame.transform.scale(img, (ANCHO, ALTO))
+                    elif k in ["player1","player2"]: self.assets[k] = pygame.transform.scale(img, (64, 64))
+                    elif k == "boss": self.assets[k] = pygame.transform.scale(img, (150, 150))
+                    else: self.assets[k] = pygame.transform.scale(img, (TAM_CELDA, TAM_CELDA))
+                except: self.assets[k] = None
+            else: self.assets[k] = None
+
+    def dibujar_boton(self, texto, x, y, w, h, hover=False):
+        """
+        Botón estilo Plastilina / Cristal Limpio.
+        Eliminado el brillo blanco superior para mejorar legibilidad del texto.
+        """
+        # Colores
+        color_base = (0, 180, 0) if not hover else (50, 230, 50)
+        color_sombra = (0, 80, 0)
+        color_borde_luz = (100, 255, 100) # Borde sutil en lugar de bloque blanco
+        
+        # 1. Sombra inferior (Profundidad)
+        pygame.draw.rect(self.pantalla, color_sombra, (x, y+6, w, h), border_radius=12)
+        
+        # 2. Cuerpo Principal
+        pygame.draw.rect(self.pantalla, color_base, (x, y, w, h), border_radius=12)
+        
+        # 3. Efecto Cristal (Sutil borde interno superior)
+        # En lugar de un rectángulo blanco solido, dibujamos un borde delgado
+        pygame.draw.rect(self.pantalla, color_borde_luz, (x+2, y+2, w-4, h-4), 2, border_radius=10)
+        
+        # 4. Texto Centrado
+        txt = self.font.render(texto, True, BLANCO)
+        self.pantalla.blit(txt, (x + (w - txt.get_width())//2, y + (h - txt.get_height())//2))
 
     def dibujar_juego(self, estado, mi_id):
-        # 1. FONDO
-        if self.assets["fondo"]:
-            self.pantalla.blit(self.assets["fondo"], (0,0))
-            # Oscurecer un poco el fondo para contraste
-            s = pygame.Surface((ANCHO,ALTO)); s.set_alpha(80); s.fill(NEGRO)
-            self.pantalla.blit(s, (0,0))
-        else:
-            self.pantalla.fill(COLOR_FONDO())
+        # Fondo Nivel
+        bg = "bg_level1"
+        if estado.nivel_actual == 2: bg = "bg_level2"
+        if estado.nivel_actual == 3: bg = "bg_boss"
+        
+        if self.assets.get(bg):
+            self.pantalla.blit(self.assets[bg], (0,0))
+            s=pygame.Surface((ANCHO,ALTO)); s.set_alpha(60); s.fill(NEGRO)
+            self.pantalla.blit(s,(0,0))
+        else: self.pantalla.fill(COLOR_FONDO_DEFAULT)
 
         t = time.time()
 
-        # 2. MAPA E ITEMS
+        # Mapa
         for y in range(FILAS):
             for x in range(COLS):
-                cell = estado.mapa[y][x]
-                rect = (x * TAM_CELDA, y * TAM_CELDA)
-                
-                # ROCA (Muro Fijo)
-                if cell == R:
-                    if self.assets["wall"]:
-                        self.pantalla.blit(self.assets["wall"], rect)
-                    else:
-                        pygame.draw.rect(self.pantalla, GRIS_PIEDRA, (*rect, TAM_CELDA, TAM_CELDA))
-                        pygame.draw.rect(self.pantalla, NEGRO, (*rect, TAM_CELDA, TAM_CELDA), 2)
-                
-                # BASURA (Destructible)
-                elif cell == B:
-                    if self.assets["bush"]:
-                        self.pantalla.blit(self.assets["bush"], rect)
-                    else:
-                        pygame.draw.rect(self.pantalla, (0, 100, 0), (*rect, TAM_CELDA, TAM_CELDA))
-                        pygame.draw.line(self.pantalla, BLANCO, rect, (rect[0]+TAM_CELDA, rect[1]+TAM_CELDA))
-                
-                # ITEMS (Con sprites específicos)
-                elif cell == ITEM_BOMBA:
-                    self.dibujar_sprite_o_neon("item_bomb", rect, (255, 50, 50))
-                elif cell == ITEM_VELOCIDAD:
-                    self.dibujar_sprite_o_neon("item_speed", rect, (0, 255, 255))
-                elif cell == ITEM_ESCUDO:
-                    self.dibujar_sprite_o_neon("item_shield", rect, (255, 255, 0))
+                c = estado.mapa[y][x]
+                r = (x*TAM_CELDA, y*TAM_CELDA)
+                if c==R:
+                    if self.assets["wall"]: self.pantalla.blit(self.assets["wall"], r)
+                    else: pygame.draw.rect(self.pantalla, (100,100,100), (*r, TAM_CELDA, TAM_CELDA))
+                elif c==B:
+                    if self.assets["bush"]: self.pantalla.blit(self.assets["bush"], r)
+                    else: pygame.draw.rect(self.pantalla, (0,100,0), (*r, TAM_CELDA, TAM_CELDA))
+                elif c>=ITEM_BOMBA:
+                    k = "item_bomb" if c==ITEM_BOMBA else "item_speed" if c==ITEM_VELOCIDAD else "item_shield"
+                    if self.assets[k]: self.pantalla.blit(self.assets[k], r)
+                    else: pygame.draw.circle(self.pantalla, (255,255,0), (r[0]+25,r[1]+25), 10)
 
-        # 3. BOMBAS
+        # Bombas
         for b in estado.bombas:
-            pos = (b.x * TAM_CELDA, b.y * TAM_CELDA)
+            pos = (b.x*TAM_CELDA, b.y*TAM_CELDA)
             if self.assets["bomb"]:
-                # Efecto de palpitación
-                scale = 1.0 + 0.1 * math.sin(t*10)
-                w = int(TAM_CELDA*scale)
-                img = pygame.transform.scale(self.assets["bomb"], (w, w))
-                offset = (TAM_CELDA - img.get_width()) // 2
-                self.pantalla.blit(img, (pos[0]+offset, pos[1]+offset))
-            else:
-                cx, cy = pos[0] + TAM_CELDA//2, pos[1] + TAM_CELDA//2
-                pygame.draw.circle(self.pantalla, BLANCO, (cx, cy), TAM_CELDA//3)
-                pygame.draw.circle(self.pantalla, (255, 0, 0), (cx, cy), TAM_CELDA//4)
+                sc = 1.0 + 0.05*math.sin(t*15)
+                img = pygame.transform.scale(self.assets["bomb"], (int(TAM_CELDA*sc), int(TAM_CELDA*sc)))
+                self.pantalla.blit(img, (pos[0]+(TAM_CELDA-img.get_width())//2, pos[1]))
+            else: pygame.draw.circle(self.pantalla, BLANCO, (pos[0]+25, pos[1]+25), 20)
 
-        # 4. EXPLOSIONES (Neon siempre se ve mejor para el fuego mágico)
+        # Explosiones
         for e in estado.explosiones:
-            color = (int(127+127*math.sin(t*10)), 100, 0)
-            for (ex, ey) in e.celdas:
-                r = (ex * TAM_CELDA, ey * TAM_CELDA, TAM_CELDA, TAM_CELDA)
-                pygame.draw.rect(self.pantalla, color, r)
-                pygame.draw.rect(self.pantalla, (255, 200, 0), r, 4)
+            for (ex,ey) in e.celdas:
+                pos = (ex*TAM_CELDA, ey*TAM_CELDA)
+                if self.assets["fire"]: self.pantalla.blit(self.assets["fire"], pos)
+                else: pygame.draw.rect(self.pantalla, (255,100,0), (*pos, TAM_CELDA, TAM_CELDA))
 
-        # 5. ENEMIGOS (Diferenciados por Tipo)
+        # Enemigos
         for e in estado.enemigos:
             if e.vivo:
-                rect = (e.x * TAM_CELDA, e.y * TAM_CELDA)
-                
-                # Mapeo de tipo de enemigo a nombre de asset
-                asset_key = "enemy_smile" # Default
-                if e.tipo == "SMOKE": asset_key = "enemy_ghost"
-                elif e.tipo == "SLIME": asset_key = "enemy_hunter"
+                pos = (e.x*TAM_CELDA, e.y*TAM_CELDA)
+                k = "enemy_smile"
+                if e.tipo=="SMOKE": k="enemy_ghost"
+                if e.tipo=="SLIME": k="enemy_hunter"
+                if self.assets[k]:
+                    oy = int(5*math.sin(t*10))
+                    self.pantalla.blit(self.assets[k], (pos[0], pos[1]+oy))
+                else: pygame.draw.circle(self.pantalla, (255,0,0), (pos[0]+25, pos[1]+25), 20)
 
-                if self.assets[asset_key]:
-                    # Pequeño rebote vertical
-                    offset_y = int(5 * math.sin(t*10))
-                    self.pantalla.blit(self.assets[asset_key], (rect[0], rect[1] + offset_y))
-                else:
-                    # Fallback neon si no hay imagen específica
-                    self.dibujar_entidad_neon(e.x, e.y, e.tipo, t, False)
+        # Jefe
+        if estado.jefe and estado.jefe.vivo:
+            if self.assets["boss"]: self.pantalla.blit(self.assets["boss"], (estado.jefe.x, estado.jefe.y))
+            else: pygame.draw.rect(self.pantalla, (255,0,255), (estado.jefe.x, estado.jefe.y, 150, 150))
+            # Barra HP
+            pct = max(0, estado.jefe.vida/estado.jefe.max_vida)
+            pygame.draw.rect(self.pantalla, (100,0,0), (200,20,400,20))
+            pygame.draw.rect(self.pantalla, (255,0,0), (200,20,400*pct,20))
+            pygame.draw.rect(self.pantalla, BLANCO, (200,20,400,20), 2)
 
-        # 6. JUGADORES (Diferenciados por Color/Rol)
+        # Jugadores
         for pid, p in estado.jugadores.items():
             if p.vivo:
-                rect = (p.x * TAM_CELDA, p.y * TAM_CELDA)
-                
-                # Determinar skin basado en color (Host es Azul, Cliente es Rojo usualmente)
-                skin = "player1" if p.color == AZUL_J1 else "player2"
-                
-                if self.assets[skin]:
-                    self.pantalla.blit(self.assets[skin], rect)
-                else:
-                    self.dibujar_entidad_neon(p.x, p.y, p.color, t, True)
-                
-                # Escudo visual (Overlay)
+                # Centrar 64x64
+                ox = (TAM_CELDA - 64)//2
+                oy = (TAM_CELDA - 64) - 5
+                pos = (p.x*TAM_CELDA+ox, p.y*TAM_CELDA+oy)
+                sk = "player1" if p.color==AZUL_J1 else "player2"
+                if self.assets[sk]: self.pantalla.blit(self.assets[sk], pos)
+                else: pygame.draw.rect(self.pantalla, p.color, (p.x*TAM_CELDA+10, p.y*TAM_CELDA+10, 30, 30))
                 if p.escudo_activo:
-                    cx, cy = rect[0] + TAM_CELDA//2, rect[1] + TAM_CELDA//2
-                    pygame.draw.circle(self.pantalla, (255, 255, 255), (cx, cy), TAM_CELDA//2, 2)
+                    pygame.draw.circle(self.pantalla, (255,255,255), (p.x*TAM_CELDA+25, p.y*TAM_CELDA+25), 25, 2)
 
-        # 7. HUD
+        # HUD
         if mi_id in estado.jugadores:
-            yo = estado.jugadores[mi_id]
-            bg = pygame.Surface((200, 30)); bg.set_alpha(150); bg.fill(NEGRO)
-            self.pantalla.blit(bg, (0,0))
-            txt = self.font.render(f"SCORE: {yo.score}", True, BLANCO)
-            self.pantalla.blit(txt, (10, 5))
+            txt = self.font.render(f"P: {estado.jugadores[mi_id].score} | NV: {estado.nivel_actual}", True, BLANCO)
+            self.pantalla.blit(txt, (10, ALTO-30))
 
-    def dibujar_sprite_o_neon(self, asset_key, rect, color_neon):
-        """Helper para dibujar items"""
-        if self.assets[asset_key]:
-            self.pantalla.blit(self.assets[asset_key], rect)
-        else:
-            cx, cy = rect[0] + TAM_CELDA//2, rect[1] + TAM_CELDA//2
-            pygame.draw.circle(self.pantalla, NEGRO, (cx, cy), 16)
-            pygame.draw.circle(self.pantalla, color_neon, (cx, cy), 12)
-            pygame.draw.circle(self.pantalla, BLANCO, (cx, cy), 12, 1)
-
-    def dibujar_entidad_neon(self, x, y, tipo, t, is_player):
-        cx, cy = x * TAM_CELDA + 25, y * TAM_CELDA + 25
-        if is_player:
-            # Tipo aquí es el color (tupla)
-            pygame.draw.rect(self.pantalla, tipo, (cx-15, cy-15, 30, 30), border_radius=5)
-            pygame.draw.rect(self.pantalla, BLANCO, (cx-10, cy-8, 8, 8))
-            pygame.draw.rect(self.pantalla, BLANCO, (cx+2, cy-8, 8, 8))
-        else:
-            # Fallback para enemigos si no hay imagen
-            if tipo == "SMILE": pygame.draw.circle(self.pantalla, (255, 255, 0), (cx, cy), 18)
-            elif tipo == "SLIME": pygame.draw.ellipse(self.pantalla, (0, 255, 50), (cx-15, cy-20, 30, 40))
-            elif tipo == "SMOKE": pygame.draw.circle(self.pantalla, (200, 200, 255), (cx, cy), 15, 2)
-
-    def dibujar_mensaje_final(self, estado_partida, jugadores):
-        s = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA)
-        s.fill((0, 0, 0, 200))
-        self.pantalla.blit(s, (0,0))
-        
-        texto = "VICTORIA" if estado_partida == "WIN" else "GAME OVER"
-        col = DORADO if estado_partida == "WIN" else ROJO_J2
-        
-        titulo = self.font_big.render(texto, True, col)
-        self.pantalla.blit(titulo, (ANCHO//2 - titulo.get_width()//2, 150))
-        
+    def dibujar_mensaje_final(self, tipo, jugadores):
+        s = pygame.Surface((ANCHO, ALTO), pygame.SRCALPHA); s.fill((0,0,0,200))
+        self.pantalla.blit(s,(0,0))
+        txt = "VICTORIA" if tipo=="WIN" else "GAME OVER"
+        c = DORADO if tipo=="WIN" else ROJO_J2
+        ren = self.font_big.render(txt, True, c)
+        self.pantalla.blit(ren, (ANCHO//2-ren.get_width()//2, 150))
         y = 300
         for pid, p in jugadores.items():
-            txt = f"JUGADOR {pid}: {p.score} pts"
-            ren = self.font.render(txt, True, p.color)
-            self.pantalla.blit(ren, (ANCHO//2 - 100, y))
-            y += 30
-            
-        exit_txt = self.font.render("Presiona ESC para salir", True, (150, 150, 150))
-        self.pantalla.blit(exit_txt, (ANCHO//2 - 120, 500))
+            t = self.font.render(f"{pid}: {p.score} pts", True, p.color)
+            self.pantalla.blit(t, (ANCHO//2-50, y)); y+=30

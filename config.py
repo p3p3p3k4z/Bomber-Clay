@@ -1,5 +1,6 @@
 import math
 import time
+import os
 
 # --- DIMENSIONES ---
 ANCHO, ALTO = 800, 600
@@ -10,30 +11,33 @@ FPS = 60
 
 # --- RED ---
 PUERTO = 7777
-BUFF_SIZE = 16384
+BUFF_SIZE = 32768 
 
-# --- COLORES DINÁMICOS ---
-def COLOR_FONDO():
-    t = time.time()
-    return (int(10 + 5 * math.sin(t)), int(5 + 5 * math.cos(t)), 25)
-
-NEGRO = (0, 0, 0)
-BLANCO = (255, 255, 255)
-GRIS_PIEDRA = (40, 40, 40)
-AZUL_J1 = (0, 255, 255)
-ROJO_J2 = (255, 50, 100)
-DORADO = (255, 215, 0) # Para victoria
+# --- ESTADOS DEL JUEGO ---
+STATE_MENU = 0
+STATE_PLAYING = 1
+STATE_GAMEOVER = 2
+STATE_WIN = 3
+STATE_SCOREBOARD = 4
+STATE_INPUT_NAME = 5
+STATE_NEXT_LEVEL = 6
 
 # --- CÓDIGOS DE MATRIZ ---
 V = 0  # Vacío
-R = 1  # Roca
-B = 2  # Basura
-# 3-5 Reservados
-ITEM_BOMBA = 6   # Power-up: Más bombas
-ITEM_VELOCIDAD = 7 # Power-up: Patines
-ITEM_ESCUDO = 8 # Power-up: Invulnerabilidad
+R = 1  # Roca (Indestructible)
+B = 2  # Basura (Destructible)
+# Items
+ITEM_BOMBA = 6
+ITEM_VELOCIDAD = 7
+ITEM_ESCUDO = 8
 
-# --- PUNTAJES ---
-PUNTOS_BASURA = 10
-PUNTOS_ENEMIGO = 100
-PUNTOS_VICTORIA = 500
+# --- JEFE ---
+BOSS_HP = 15
+
+# --- COLORES ---
+NEGRO = (0, 0, 0)
+BLANCO = (255, 255, 255)
+AZUL_J1 = (0, 255, 255)
+ROJO_J2 = (255, 50, 100)
+DORADO = (255, 215, 0)
+COLOR_FONDO_DEFAULT = (20, 20, 40)
