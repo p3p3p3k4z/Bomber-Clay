@@ -20,7 +20,7 @@ class MapGenerator:
             # Niveles normales
             # Aumentamos probabilidad de arbustos para el gameplay, pero pocos muros fijos
             prob_muro = 0.20 + (nivel * 0.02)
-            prob_arbusto = 0.20 + (nivel * 0.05)
+            prob_arbusto = 0.30 + (nivel * 0.05)
 
         # 2. Relleno Aleatorio (Sin patrón ajedrez)
         for y in range(1, FILAS - 1):
@@ -31,8 +31,8 @@ class MapGenerator:
                 d3 = x + (FILAS-1-y)
                 d4 = (COLS-1-x) + (FILAS-1-y)
                 
-                # Radio de seguridad de 4 bloques para no encerrar
-                if min(d1, d2, d3, d4) < 4:
+                # Radio de seguridad bloques para no encerrar
+                if min(d1, d2, d3, d4) < 5:
                     mapa[y][x] = V
                     continue
 

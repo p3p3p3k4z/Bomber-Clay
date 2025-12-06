@@ -41,7 +41,7 @@ class AssetManager:
             "bg_level1": "assets/bg_level1.png",
             "bg_level2": "assets/bg_level2.png",
             "bg_boss": "assets/bg_boss.png",
-            "bg_score": "assets/bg_score.png",
+            "bg_score": "assets/intro_bg.png",
             "item_bomb": "assets/item_bomb.png",
             "item_speed": "assets/item_speed.png",
             "item_shield": "assets/item_shield.png",
@@ -96,7 +96,7 @@ class AssetManager:
         elif nivel_o_tipo == "RANKING": path = "assets/ranking.mp3"
         elif nivel_o_tipo == 3: path = "assets/music_boss.mp3"
         else:
-            opciones = ["assets/musica.mp3", "assets/music_1.mp3", "assets/music_2.mp3"]
+            opciones = ["assets/musica.mp3", "assets/music_1.mp3", "assets/music_2.mp3", "assets/music_3.mp3", "assets/music_4.mp3"]
             disponibles = [p for p in opciones if os.path.exists(self.resolver_ruta(p))]
             if disponibles: 
                 import random
