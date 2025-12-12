@@ -19,6 +19,7 @@ class Renderer:
         self.pantalla.blit(txt, (x+(w-txt.get_width())//2, y+(h-txt.get_height())//2))
 
     def dibujar_juego(self, estado, mi_id):
+        # 1. DIBUJAR FONDO
         bg = "bg_level1"
         if estado.nivel_actual == 2: bg = "bg_level2"
         if estado.nivel_actual == 3: bg = "bg_boss"
@@ -28,6 +29,7 @@ class Renderer:
             self.pantalla.blit(s,(0,0))
         else: self.pantalla.fill(COLOR_FONDO_DEFAULT)
 
+        # 2. DIBUJAR MAPA (Aquí añadimos el Ítem de Fuego)
         for y in range(FILAS):
             for x in range(COLS):
                 c = estado.mapa[y][x]
@@ -39,10 +41,17 @@ class Renderer:
                     if self.am.images["bush"]: self.pantalla.blit(self.am.images["bush"], r)
                     else: pygame.draw.rect(self.pantalla, (0,100,0), (*r, TAM_CELDA, TAM_CELDA))
                 elif c>=ITEM_BOMBA:
-                    k = "item_bomb" if c==ITEM_BOMBA else "item_speed" if c==ITEM_VELOCIDAD else "item_shield"
-                    if self.am.images[k]: self.pantalla.blit(self.am.images[k], r)
+                    # ### CAMBIO AQUI 1: Lógica para pintar el Ítem Fuego ###
+                    k = "item_bomb"
+                    if c == ITEM_VELOCIDAD: k = "item_speed"
+                    elif c == ITEM_ESCUDO: k = "item_shield"
+                    elif c == ITEM_FUEGO: k = "item_fire" # <--- NUEVO
+                    # -----------------------------------------------------
+
+                    if self.am.images.get(k): self.pantalla.blit(self.am.images[k], r)
                     else: pygame.draw.circle(self.pantalla, (255,255,0), (r[0]+25,r[1]+25), 10)
 
+        # 3. DIBUJAR BOMBAS
         for b in estado.bombas:
             pos = (b.x*TAM_CELDA, b.y*TAM_CELDA)
             if self.am.images["bomb"]:
@@ -50,40 +59,51 @@ class Renderer:
                 self.pantalla.blit(img, pos)
             else: pygame.draw.circle(self.pantalla, BLANCO, (pos[0]+25, pos[1]+25), 20)
 
+        # 4. DIBUJAR EXPLOSIONES
         for e in estado.explosiones:
             for (ex,ey) in e.celdas:
                 pos = (ex*TAM_CELDA, ey*TAM_CELDA)
                 if self.am.images["fire"]: self.pantalla.blit(self.am.images["fire"], pos)
                 else: pygame.draw.rect(self.pantalla, (255,100,0), (*pos, TAM_CELDA, TAM_CELDA))
 
+        # 5. DIBUJAR ENEMIGOS (Aquí añadimos el Tanque)
         for e in estado.enemigos:
             if e.vivo:
                 pos = (e.x*TAM_CELDA, e.y*TAM_CELDA)
                 k = "enemy_smile"
                 if e.tipo=="SMOKE": k="enemy_ghost"
                 if e.tipo=="SLIME": k="enemy_hunter"
-                if self.am.images[k]: self.pantalla.blit(self.am.images[k], pos)
+                
+                # ### CAMBIO AQUI 2: Lógica para pintar el Tanque ###
+                if e.tipo=="TANK": k="enemy_tank" # <--- NUEVO
+                # -------------------------------------------------
+
+                if self.am.images.get(k): self.pantalla.blit(self.am.images[k], pos)
                 else: pygame.draw.circle(self.pantalla, (255,0,0), (pos[0]+25, pos[1]+25), 20)
 
+        # 6. DIBUJAR JEFE
         if estado.jefe and estado.jefe.vivo:
             if self.am.images["boss"]: self.pantalla.blit(self.am.images["boss"], (estado.jefe.x, estado.jefe.y))
             else: pygame.draw.rect(self.pantalla, (255,0,255), (estado.jefe.x, estado.jefe.y, 150, 150))
+            # Barra de vida del jefe
             pct = max(0, estado.jefe.vida/estado.jefe.max_vida)
             pygame.draw.rect(self.pantalla, (100,0,0), (200,20,400,20))
             pygame.draw.rect(self.pantalla, (255,0,0), (200,20,400*pct,20))
             pygame.draw.rect(self.pantalla, BLANCO, (200,20,400,20), 2)
 
+        # 7. DIBUJAR JUGADORES
         for pid, p in estado.jugadores.items():
             if p.vivo:
                 ox = (TAM_CELDA - 64)//2
                 oy = (TAM_CELDA - 64) - 5
                 pos = (p.x*TAM_CELDA+ox, p.y*TAM_CELDA+oy)
                 sk = "player1" if p.color==AZUL_J1 else "player2"
-                if self.am.images[sk]: self.pantalla.blit(self.am.images[sk], pos)
+                if self.am.images.get(sk): self.pantalla.blit(self.am.images[sk], pos)
                 else: pygame.draw.rect(self.pantalla, p.color, (p.x*TAM_CELDA+10, p.y*TAM_CELDA+10, 30, 30))
                 if p.escudo_activo:
                     pygame.draw.circle(self.pantalla, (255,255,255), (p.x*TAM_CELDA+25, p.y*TAM_CELDA+25), 25, 2)
 
+        # HUD (Puntaje)
         if mi_id in estado.jugadores:
             txt = self.am.fonts["ui"].render(f"P: {estado.jugadores[mi_id].score} | NV: {estado.nivel_actual}", True, BLANCO)
             self.pantalla.blit(txt, (10, ALTO-30))
@@ -109,7 +129,7 @@ class Renderer:
         self.pantalla.blit(s,(0,0))
         ren = self.am.fonts["big"].render("¡JUEGO COMPLETADO!", True, DORADO)
         self.pantalla.blit(ren, (ANCHO//2-ren.get_width()//2, 50))
-        if self.am.images["trophy"]:
+        if self.am.images.get("trophy"):
             rect_trofeo = self.am.images["trophy"].get_rect(center=(ANCHO//2, ALTO//2))
             self.pantalla.blit(self.am.images["trophy"], rect_trofeo)
             txt = self.am.fonts["ui"].render("HAZ CLICK EN EL TROFEO", True, BLANCO)

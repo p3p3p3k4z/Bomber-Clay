@@ -20,9 +20,9 @@ STATE_GAMEOVER = 2
 STATE_WIN = 3
 STATE_SCOREBOARD = 4
 STATE_INPUT_NAME = 5
-STATE_NEXT_LEVEL = 6      # Transición técnica
-STATE_LEVEL_COMPLETED = 7 # Pantalla visual de "Nivel Completado"
-STATE_PAUSE = 8           # Menú de Pausa
+STATE_NEXT_LEVEL = 6      
+STATE_LEVEL_COMPLETED = 7 
+STATE_PAUSE = 8           
 
 # --- CÓDIGOS DE MATRIZ ---
 V = 0  # Vacío
@@ -32,6 +32,7 @@ B = 2  # Basura (Destructible)
 ITEM_BOMBA = 6
 ITEM_VELOCIDAD = 7
 ITEM_ESCUDO = 8
+ITEM_FUEGO = 9  ### <--- AGREGADO: ESTE ES EL NUEVO ÍTEM ###
 
 # --- JEFE ---
 BOSS_HP = 15
