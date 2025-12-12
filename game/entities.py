@@ -14,6 +14,10 @@ class Jugador:
         self.max_bombas = 1
         self.velocidad_extra = False
         self.escudo_activo = False
+        
+        # --- nuevo ---
+        self.rango_bomba = 2 # Rango inicial normal
+        # -------------------
         self.timer_efecto = 0 
 
     def aplicar_item(self, tipo):
@@ -26,6 +30,10 @@ class Jugador:
         elif tipo == "ESCUDO":
             self.escudo_activo = True
             self.timer_efecto = time.time() + 8
+        # --- nuevo ---
+        elif tipo == "FUEGO":
+            self.rango_bomba += 1 # Aumenta el poder de explosión
+        # -------------------
 
     def update(self):
         if time.time() > self.timer_efecto:
@@ -121,13 +129,41 @@ class EnemigoCazador(Enemigo):
                 nx, ny = self.x + dx, self.y + dy
                 if self.puede_moverse(nx, ny, mapa): self.x, self.y = nx, ny
             self.timer_mov = time.time() + self.velocidad
+            
+            
+            
+# NUevooooooooooooooooo
+class EnemigoTanque(Enemigo):
+    def __init__(self, x, y): 
+        super().__init__(x, y, "TANK") # Tipo TANK
+        self.velocidad = 0.5           # Muy lento
+        self.vida = 2                  # 2 Vidas
+        self.image_key = "enemy_tank"  # Para que sepa qué dibujar (necesitas ajustar renderer)
+
+    def mover(self, mapa, jugadores):
+        # Se mueve igual que el errático (al azar) pero lento
+        if time.time() > self.timer_mov:
+            dirs = [(0,1), (0,-1), (1,0), (-1,0)]
+            random.shuffle(dirs)
+            for dx, dy in dirs:
+                nx, ny = self.x + dx, self.y + dy
+                if self.puede_moverse(nx, ny, mapa): 
+                    self.x, self.y = nx, ny
+                    break
+            self.timer_mov = time.time() + self.velocidad
+            
+            
+            
+            
 
 class Bomba:
-    def __init__(self, x, y, owner_id):
+    # --- NUEVO EL INIT PARA ACEPTAR RADIO ---
+    def __init__(self, x, y, owner_id, radio=2): 
         self.x, self.y = x, y
         self.owner_id = owner_id
         self.tiempo_detonacion = time.time() + 3.0
-        self.radio = 2
+        self.radio = radio # Usamos el radio que nos mandan
+    # -----------------------------------------
 
 class Explosion:
     def __init__(self, celdas, owner_id):

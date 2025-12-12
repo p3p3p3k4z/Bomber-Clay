@@ -106,10 +106,15 @@ class GameState:
             else:
                 self.estado_partida = STATE_WIN
 
+
+
+
     def detonar(self, bomba):
         self.audio_events.append("EXPLOSION")
         hits = [(bomba.x, bomba.y)]
         dirs = [(0,1), (0,-1), (1,0), (-1,0)]
+        
+        # Expansión de la explosión
         for dx, dy in dirs:
             for i in range(1, bomba.radio+1):
                 nx, ny = bomba.x + dx*i, bomba.y + dy*i
@@ -123,15 +128,35 @@ class GameState:
         
         self.explosiones.append(Explosion(hits, bomba.owner_id))
         
+        # Detección de daño
         for hx, hy in hits:
+            # --- MODIFICACIÓN PARA ENEMIGOS (TANQUE) ---
             for e in self.enemigos:
                 if e.vivo and e.x==hx and e.y==hy:
-                    e.vivo = False
-                    self.audio_events.append("ENEMY_DIE")
-                    if bomba.owner_id in self.jugadores: self.jugadores[bomba.owner_id].score += 100
+                    muerto = True # Asumimos que muere
+                    
+                    # Verificamos si es un Tanque (tiene atributo vida)
+                    if hasattr(e, 'vida'): 
+                        e.vida -= 1
+                        if e.vida > 0:
+                            muerto = False # ¡Sobrevive!
+                            self.audio_events.append("BOSS_HIT") # Sonido de golpe seco
+                    
+                    if muerto:
+                        e.vivo = False
+                        self.audio_events.append("ENEMY_DIE")
+                        if bomba.owner_id in self.jugadores:
+                            # Si es tanque da 300 puntos, si no 100
+                            puntos = 300 if e.tipo == "TANK" else 100
+                            self.jugadores[bomba.owner_id].score += puntos
+            # -------------------------------------------
+
+            # Daño a Jugadores
             for p in self.jugadores.values():
                 if p.x==hx and p.y==hy and not p.escudo_activo:
                     p.vivo = False; self.audio_events.append("DEATH_PLAYER")
+            
+            # Daño al Jefe
             if self.jefe and self.jefe.vivo:
                 jx, jy = self.jefe.x, self.jefe.y
                 ex, ey = hx*TAM_CELDA, hy*TAM_CELDA
@@ -143,20 +168,30 @@ class GameState:
                         self.audio_events.append("BOSS_DIE")
                         if bomba.owner_id in self.jugadores: self.jugadores[bomba.owner_id].score += 5000
 
+
+
+
+
     def mover_jugador(self, pid, dx, dy):
         if pid not in self.jugadores: return
         p = self.jugadores[pid]
         if not p.vivo: return
         nx, ny = p.x+dx, p.y+dy
+        
         if 0<=nx<COLS and 0<=ny<FILAS:
             cell = self.mapa[ny][nx]
-            if cell in [ITEM_BOMBA, ITEM_VELOCIDAD, ITEM_ESCUDO]:
-                tipo = "BOMBA" if cell==ITEM_BOMBA else "VELOCIDAD" if cell==ITEM_VELOCIDAD else "ESCUDO"
+            
+            # --- MODIFIC0 ESTA PARTE ---
+            # Asumo que ITEM_FUEGO es un número nuevo en tu config.py (ej. 7)
+            if cell in [ITEM_BOMBA, ITEM_VELOCIDAD, ITEM_ESCUDO, ITEM_FUEGO]:
+                tipo = "BOMBA" if cell==ITEM_BOMBA else "VELOCIDAD" if cell==ITEM_VELOCIDAD else "ESCUDO" if cell==ITEM_ESCUDO else "FUEGO"
+                
                 p.aplicar_item(tipo)
                 self.mapa[ny][nx] = V
                 p.score += 50
                 self.audio_events.append("POWERUP")
                 return
+            # ---------------------------
             if cell == V:
                 if not any(b.x==nx and b.y==ny for b in self.bombas): p.x, p.y = nx, ny
 
@@ -164,7 +199,9 @@ class GameState:
         if pid in self.jugadores:
             p = self.jugadores[pid]
             if p.vivo and p.bombas_disponibles > 0:
-                self.bombas.append(Bomba(p.x, p.y, pid))
+                # --- MODIFICADO: PASAMOS p.rango_bomba ---
+                self.bombas.append(Bomba(p.x, p.y, pid, radio=p.rango_bomba))
+                # -----------------------------------------
                 p.bombas_disponibles -= 1
                 self.audio_events.append("PLANT_BOMB")
 

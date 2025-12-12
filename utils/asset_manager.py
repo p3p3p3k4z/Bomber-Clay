@@ -45,6 +45,10 @@ class AssetManager:
             "item_bomb": "assets/item_bomb.png",
             "item_speed": "assets/item_speed.png",
             "item_shield": "assets/item_shield.png",
+            # --- Nuevo personaje ---
+            "enemy_tank": "assets/tank.png",       
+            "item_fire": "assets/item_fire.png",   
+            # ------------------------------------
             "trophy": "assets/trophy.png"
         }
 
